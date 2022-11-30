@@ -1,5 +1,7 @@
 import json
 
+# import os
+
 import requests
 
 from bs4 import BeautifulSoup as Bs
@@ -7,9 +9,9 @@ from bs4 import BeautifulSoup as Bs
 from settings import PROXY_URL
 
 
-def get_data(site_url: str):
+def get_data(site_url: str, user_id: str):
 
-    domen = "https://autosakhcom.ru"
+    domain = "https://autosakhcom.ru"
     proxies = {}
     if PROXY_URL != "":
         proxies = {
@@ -25,14 +27,14 @@ def get_data(site_url: str):
     cars_dict = {}
     for car in cars:
         car_id = car.find("a", class_="sale-link").get("href").split("/")[2]
-        link = f'{domen}{car.find("a", class_="sale-link").get("href")}'
+        link = f'{domain}{car.find("a", class_="sale-link").get("href")}'
         name = car.find("a", class_="sale-link").text.strip()
         car_engine = car.find("div", class_="sale-engine").text.strip()
         car_chassis = car.find("div", class_="sale-chassis").text.strip()
         # additional = car.find("div", class_="sale-additional").text.strip()
         car_price = car.find("div", class_="sale-price").text.strip()
         date = car.find("div", class_="sale-published-date").text.strip()
-        car_image = f'{domen}{car.find("img", class_="js-sale-image").get("src")}'
+        car_image = f'{domain}{car.find("img", class_="js-sale-image").get("src")}'
 
         cars_dict[car_id] = {
             "car_id": car_id,
@@ -45,17 +47,16 @@ def get_data(site_url: str):
             "date": date,
         }
 
-    with open("cars.json", "w") as file:
+    with open(f"cache/cars_{user_id}.json", "w") as file:
         json.dump(cars_dict, file, indent=4, ensure_ascii=False)
-
     return cars_dict
 
 
-def check_cars_update(site_url: str):
-    with open("cars.json") as file:
+def check_cars_update(site_url: str, user_id: str):
+    with open(f"cache/cars_{user_id}.json") as file:
         cars_list = json.load(file)
 
-    domen = "https://autosakhcom.ru"
+    domain = "https://autosakhcom.ru"
 
     proxies = {}
     if PROXY_URL != "":
@@ -65,55 +66,54 @@ def check_cars_update(site_url: str):
         }
 
     response = requests.get(site_url, proxies=proxies)
-
     soup = Bs(response.text, "lxml")
 
     cars = soup.findAll("div", class_="sale-item")
     new_cars_dict = {}
     for car in cars:
         car_id = car.find("a", class_="sale-link").get("href").split("/")[2]
-
         if car_id in cars_list:
             continue
         else:
-            car_id = car.find("a", class_="sale-link").get("href").split("/")[2]
-            link = f'{domen}{car.find("a", class_="sale-link").get("href")}'
+            link = f'{domain}{car.find("a", class_="sale-link").get("href")}'
             name = car.find("a", class_="sale-link").text.strip()
             car_engine = car.find("div", class_="sale-engine").text.strip()
             car_chassis = car.find("div", class_="sale-chassis").text.strip()
             # additional = car.find("div", class_="sale-additional").text.strip()
             car_price = car.find("div", class_="sale-price").text.strip()
             date = car.find("div", class_="sale-published-date").text.strip()
-            car_image = f'{domen}{car.find("img", class_="js-sale-image").get("src")}'
+            car_image = f'{domain}{car.find("img", class_="js-sale-image").get("src")}'
 
-        cars_list[car_id] = {
-            "car_id": car_id,
-            "car_link": link,
-            "car_name": name,
-            "car_engine": car_engine,
-            "car_chassis": car_chassis,
-            "car_price": car_price,
-            "car_image": car_image,
-            "date": date,
-        }
+            cars_list[car_id] = {
+                "car_id": car_id,
+                "car_link": link,
+                "car_name": name,
+                "car_engine": car_engine,
+                "car_chassis": car_chassis,
+                "car_price": car_price,
+                "car_image": car_image,
+                "date": date,
+            }
 
-        new_cars_dict[car_id] = {
-            "car_id": car_id,
-            "car_link": link,
-            "car_name": name,
-            "car_engine": car_engine,
-            "car_chassis": car_chassis,
-            "car_price": car_price,
-            "car_image": car_image,
-            "date": date,
-        }
-
-    with open("cars.json", "w") as file:
+            new_cars_dict[car_id] = {
+                "car_id": car_id,
+                "car_link": link,
+                "car_name": name,
+                "car_engine": car_engine,
+                "car_chassis": car_chassis,
+                "car_price": car_price,
+                "car_image": car_image,
+                "date": date,
+            }
+    with open(f"cache/cars_{user_id}.json", "w") as file:
         json.dump(cars_list, file, indent=4, ensure_ascii=False)
 
     return new_cars_dict
 
+
 #
+#
+# #
 # if __name__ == "__main__":
 #     url = (
 #         "https://autosakhcom.ru/sales/auto"
@@ -124,4 +124,22 @@ def check_cars_update(site_url: str):
 #     #     print(get_data(site_url=url))
 #     # else:
 #     #     print(check_cars_update(site_url=url))
-#     get_data(site_url=url)
+#     # get_data(site_url=url)
+#     test = check_cars_update(site_url=url)
+#     print(test)
+#     for k, car_id in sorted(test.items()):
+#         car_name = car_id["car_name"]
+#         car_engine = car_id["car_engine"]
+#         car_chassis = car_id["car_chassis"]
+#         car_price = car_id["car_price"]
+#         date = car_id["date"]
+#         car_link = car_id["car_link"]
+#         massage_ = (
+#             f"{('Модель: ')}{car_name}\n"
+#             f"{('Вид двигателя: ')}{car_engine}\n"
+#             f"{('Привод: ')}{car_chassis}\n"
+#             f"{('Цена: ')}{car_price}\n"
+#             f"{('Дата: ')}{date}\n"
+#             f"{('Просмотреть', car_link)}"
+#         )
+#         print(massage_)

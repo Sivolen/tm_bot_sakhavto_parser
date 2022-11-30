@@ -1,4 +1,8 @@
 import os
+
+import logging
+from logging.handlers import RotatingFileHandler
+
 from asyncio import sleep
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -16,6 +20,29 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
+# Configure logging default
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename="logs/debug.log",
+    filemode="w",
+    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+    encoding="utf-8",
+)
+
+# Init logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Configure log dimp to the file
+# Set logger format
+file_header = RotatingFileHandler("logs/bot.log", maxBytes=100000, backupCount=100)
+file_header.setLevel(logging.DEBUG)
+log_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+file_header.setFormatter(log_format)
+logger.addHandler(file_header)
+
+
 # Allowed users
 user_id_required = [
     364022,  # Gridnev
@@ -27,6 +54,11 @@ chat_id_required = user_id_required
 
 
 class Parm(StatesGroup):
+    """
+    Class for states machine
+    """
+
+    # on, off switcher
     status = State()
 
 
@@ -38,6 +70,9 @@ async def start_handler(message: types.Message):
     :param message:
     :return:
     """
+    logger.info(
+        f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
+    )
     start_buttons = ["Начать процесс"]
     keyboard = types.ReplyKeyboardMarkup(
         resize_keyboard=True, row_width=3, selective=True
@@ -46,7 +81,7 @@ async def start_handler(message: types.Message):
     await message.answer("Выберете метод", reply_markup=keyboard)
 
 
-# Went to general menu
+# Start parsing
 @dp.message_handler(Text(equals="Начать процесс"), user_id=user_id_required)
 async def start(message: types.Message, state: FSMContext):
     """
@@ -55,28 +90,39 @@ async def start(message: types.Message, state: FSMContext):
     :param message:
     :return:
     """
-
+    logger.info(
+        f"User {message.from_user.full_name}, id: {message.from_user.id} starting process"
+    )
     start_buttons = ["Остановить"]
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(*start_buttons)
     await message.answer("Процесс начат", reply_markup=keyboard)
     async with state.proxy() as data:
-        data["status"] = True
+        data[message.from_user.id] = True
     while True:
+        # Timeout before next request
         await sleep(TIMER)
+        # Checking the process, if true then it works, if false then interrupt the loop
         async with state.proxy() as data:
-            if data["status"] is False:
+            logger.info(
+                f'User {message.from_user.full_name}, id: {message.from_user.id} process status: {message.from_user.id}'
+            )
+            if data[message.from_user.id] is False:
+                await state.finish()
                 break
-        if not os.path.exists("cars.json") or os.stat("cars.json").st_size == 0:
-            cars_data = get_data(site_url=URL)
+        if (
+            not os.path.exists(f"cache/cars_{message.from_user.id}.json")
+            or os.stat(f"cache/cars_{message.from_user.id}.json").st_size == 0
+        ):
+            cars_data = get_data(site_url=URL, user_id=message.from_user.id)
             if cars_data is not {}:
-                for car_id in cars_data:
-                    car_name = cars_data[car_id]["car_name"]
-                    car_engine = cars_data[car_id]["car_engine"]
-                    car_chassis = cars_data[car_id]["car_chassis"]
-                    car_price = cars_data[car_id]["car_price"]
-                    date = cars_data[car_id]["date"]
-                    car_link = cars_data[car_id]["car_link"]
+                for k, car_id in sorted(cars_data.items()):
+                    car_name = car_id["car_name"]
+                    car_engine = car_id["car_engine"]
+                    car_chassis = car_id["car_chassis"]
+                    car_price = car_id["car_price"]
+                    date = car_id["date"]
+                    car_link = car_id["car_link"]
                     massage_ = (
                         f"{hbold('Модель: ')}{car_name}\n"
                         f"{hcode('Вид двигателя: ')}{car_engine}\n"
@@ -87,15 +133,18 @@ async def start(message: types.Message, state: FSMContext):
                     )
                     await message.answer(massage_)
         else:
-            cars_data = check_cars_update(site_url=URL)
+            cars_data = check_cars_update(site_url=URL, user_id=message.from_user.id)
             if cars_data is not {}:
-                for car_id in cars_data:
-                    car_name = cars_data[car_id]["car_name"]
-                    car_engine = cars_data[car_id]["car_engine"]
-                    car_chassis = cars_data[car_id]["car_chassis"]
-                    car_price = cars_data[car_id]["car_price"]
-                    date = cars_data[car_id]["date"]
-                    car_link = cars_data[car_id]["car_link"]
+                logger.info(
+                    f"User {message.from_user.full_name}, id: {message.from_user.id} process status: {cars_data}"
+                )
+                for k, car_id in sorted(cars_data.items()):
+                    car_name = car_id["car_name"]
+                    car_engine = car_id["car_engine"]
+                    car_chassis = car_id["car_chassis"]
+                    car_price = car_id["car_price"]
+                    date = car_id["date"]
+                    car_link = car_id["car_link"]
                     massage_ = (
                         f"{hbold('Модель: ')}{car_name}\n"
                         f"{hcode('Вид двигателя: ')}{car_engine}\n"
@@ -108,7 +157,7 @@ async def start(message: types.Message, state: FSMContext):
         await Parm.status.set()
 
 
-# Went to general menu
+# Stop parsing
 @dp.message_handler(state=Parm.status)
 @dp.message_handler(Text(equals="Остановить"), user_id=user_id_required)
 async def stop(message: types.Message, state: FSMContext):
@@ -118,21 +167,23 @@ async def stop(message: types.Message, state: FSMContext):
     :param message:
     :return:
     """
+    logger.info(
+        f"User {message.from_user.full_name}, id: {message.from_user.id} stopping process"
+    )
     start_buttons = ["Начать процесс"]
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(*start_buttons)
     async with state.proxy() as data:
-        data["status"] = False
-    await sleep(3)
-    await state.finish()
+        data[message.from_user.id] = False
     await message.answer("Процесс остановлен", reply_markup=keyboard)
 
 
 # Init bot
 def main():
-    executor.start_polling(dp)
-    # executor.start_polling(dp, skip_updates=True)
+    # executor.start_polling(dp)
+    executor.start_polling(dp, skip_updates=True)
 
 
+# Point
 if __name__ == "__main__":
     main()
