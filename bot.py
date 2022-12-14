@@ -12,7 +12,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from settings import TM_TOKEN, PROXY_URL, URL, TIMER
+from settings import TM_TOKEN, PROXY_URL, URL, TIMER, DOMAIN
 from main import get_data, check_cars_update
 
 bot = Bot(token=TM_TOKEN, parse_mode=types.ParseMode.HTML, proxy=PROXY_URL)
@@ -47,6 +47,7 @@ logger.addHandler(file_header)
 user_id_required = [
     364022,  # Gridnev
     444851768,  # Fedorov
+    299491767,  # Kim A.E.
 ]
 
 # Change for use in groups (user_id == chat_id in pm)
@@ -114,7 +115,7 @@ async def start(message: types.Message, state: FSMContext):
             not os.path.exists(f"cache/cars_{message.from_user.id}.json")
             or os.stat(f"cache/cars_{message.from_user.id}.json").st_size == 0
         ):
-            cars_data = get_data(site_url=URL, user_id=message.from_user.id)
+            cars_data = get_data(site_url=URL, user_id=message.from_user.id, domain=DOMAIN)
             if cars_data is not {}:
                 for k, car_id in sorted(cars_data.items()):
                     car_name = car_id["car_name"]
@@ -133,7 +134,7 @@ async def start(message: types.Message, state: FSMContext):
                     )
                     await message.answer(massage_)
         else:
-            cars_data = check_cars_update(site_url=URL, user_id=message.from_user.id)
+            cars_data = check_cars_update(site_url=URL, user_id=message.from_user.id, domain=DOMAIN)
             if cars_data is not {}:
                 logger.info(
                     f"User {message.from_user.full_name}, id: {message.from_user.id} process status: {cars_data}"

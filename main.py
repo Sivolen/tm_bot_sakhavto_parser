@@ -9,9 +9,9 @@ from bs4 import BeautifulSoup as Bs
 from settings import PROXY_URL
 
 
-def get_data(site_url: str, user_id: str):
+def get_data(site_url: str, user_id: str, domain: str):
 
-    domain = "https://autosakhcom.ru"
+    domain = domain
     proxies = {}
     if PROXY_URL != "":
         proxies = {
@@ -52,11 +52,11 @@ def get_data(site_url: str, user_id: str):
     return cars_dict
 
 
-def check_cars_update(site_url: str, user_id: str):
+def check_cars_update(site_url: str, user_id: str, domain: str):
     with open(f"cache/cars_{user_id}.json") as file:
         cars_list = json.load(file)
 
-    domain = "https://autosakhcom.ru"
+    domain = domain
 
     proxies = {}
     if PROXY_URL != "":
@@ -110,36 +110,3 @@ def check_cars_update(site_url: str, user_id: str):
 
     return new_cars_dict
 
-
-#
-#
-# #
-# if __name__ == "__main__":
-#     url = (
-#         "https://autosakhcom.ru/sales/auto"
-#         "?f%5Bcategory_id%5D=1&is_extended=1&f%5Bprice_e%5D=300000&f%5Bto_order%5D=0&sort=newest#search-description"
-#     )
-#     # get_data(site_url=url)
-#     # if not os.path.exists("cars.json") or os.stat("cars.json").st_size == 0:
-#     #     print(get_data(site_url=url))
-#     # else:
-#     #     print(check_cars_update(site_url=url))
-#     # get_data(site_url=url)
-#     test = check_cars_update(site_url=url)
-#     print(test)
-#     for k, car_id in sorted(test.items()):
-#         car_name = car_id["car_name"]
-#         car_engine = car_id["car_engine"]
-#         car_chassis = car_id["car_chassis"]
-#         car_price = car_id["car_price"]
-#         date = car_id["date"]
-#         car_link = car_id["car_link"]
-#         massage_ = (
-#             f"{('Модель: ')}{car_name}\n"
-#             f"{('Вид двигателя: ')}{car_engine}\n"
-#             f"{('Привод: ')}{car_chassis}\n"
-#             f"{('Цена: ')}{car_price}\n"
-#             f"{('Дата: ')}{date}\n"
-#             f"{('Просмотреть', car_link)}"
-#         )
-#         print(massage_)

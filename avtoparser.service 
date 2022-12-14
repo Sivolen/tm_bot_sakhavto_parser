@@ -1,0 +1,16 @@
+[Unit]
+Description=AvtoParser Service
+After=network.target
+
+[Service]
+# PIDFile=/var/tmp/avtoparser.pid
+# ExecStart=/usr/bin/python3 bot.py
+# ExecReload=/usr/bin/python3 bot.py
+ExecStart=/opt/sakhavto_parser/venv/bin/python3 bot.py
+ExecReload=/opt/sakhavto_parser/venv/bin/python3 bot.py
+WorkingDirectory=/opt/sakhavto_parser/
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
