@@ -156,8 +156,8 @@ async def start(message: types.Message, state: FSMContext):
         user_id: {"status": True}
     })
 
-    current_state = await state.get_state()
-    state_data = await state.get_data()
+    # current_state = await state.get_state()
+    # state_data = await state.get_data()
 
     # print(current_state)
     # print(state_data)
