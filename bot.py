@@ -91,7 +91,7 @@ class Parm(StatesGroup):
 
 # @dp.message(F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
 @form_router.message(F.from_user.id.in_(user_id_required), Command(commands=["start"]))
-async def start_handler(message: Message, state: FSMContext):
+async def start_handler(message: Message):
     """
     Create Buttons menu
     :param message:
@@ -100,7 +100,6 @@ async def start_handler(message: Message, state: FSMContext):
     logger.info(
         f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
     )
-    await state.set_state(Parm.status)
     keyboard = ReplyKeyboardMarkup(
         resize_keyboard=True, row_width=3, selective=True,
         keyboard=[
@@ -150,6 +149,7 @@ async def start(message: types.Message, state: FSMContext):
             ]
         ]
     )
+    await state.set_state(Parm.status)
     await message.answer("Процесс начат", reply_markup=keyboard)
     user_id = message.from_user.id
     await state.update_data(status={
