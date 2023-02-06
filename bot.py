@@ -6,7 +6,7 @@ import sys
 import asyncio
 from asyncio import sleep
 
-from aiogram import Bot, Dispatcher, types, Router, html, F
+from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.utils.markdown import hbold, hcode, hlink
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
@@ -38,9 +38,6 @@ session = AiohttpSession(
 
 form_router = Router()
 
-dp = Dispatcher()
-
-dp.include_router(form_router)
 
 # Configure logging default
 logging.basicConfig(
@@ -261,6 +258,10 @@ async def stop(message: types.Message, state: FSMContext):
 
 async def main():
     bot = Bot(token=TM_TOKEN, parse_mode="HTML", session=session)
+
+    dp = Dispatcher()
+
+    dp.include_router(form_router)
 
     await dp.start_polling(bot)
 
