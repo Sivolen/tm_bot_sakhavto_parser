@@ -159,8 +159,8 @@ async def start(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     state_data = await state.get_data()
 
-    print(current_state)
-    print(state_data)
+    # print(current_state)
+    # print(state_data)
     while True:
         # Checking the process, if true then it works, if false then interrupt the loop
         state_data = await state.get_data()
