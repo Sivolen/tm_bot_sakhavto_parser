@@ -7,7 +7,7 @@ import asyncio
 from asyncio import sleep
 
 from aiogram import Bot, Dispatcher, types, Router, F
-from aiogram.utils.markdown import hbold, hcode, hlink
+from aiogram.utils.markdown import hbold, hcode, hlink, hide_link
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, Text
@@ -184,12 +184,16 @@ async def start(message: types.Message, state: FSMContext):
                     car_price = car_id["car_price"]
                     date = car_id["date"]
                     car_link = car_id["car_link"]
+                    car_image = car_id["car_image"]
                     massage_ = (
+                        # f"{hlink('', car_image)}"
                         f"{hbold('Модель: ')}{car_name}\n"
+                        f"{hide_link(str(car_image))}\n"
                         f"{hcode('Вид двигателя: ')}{car_engine}\n"
                         f"{hcode('Привод: ')}{car_chassis}\n"
                         f"{hcode('Цена: ')}{car_price}\n"
                         f"{hcode('Дата: ')}{date}\n"
+                        f"{hide_link(str(car_image))}\n"
                         f"{hlink('Просмотреть', car_link)}"
                     )
                     await message.answer(massage_)
@@ -206,12 +210,15 @@ async def start(message: types.Message, state: FSMContext):
                     car_price = car_id["car_price"]
                     date = car_id["date"]
                     car_link = car_id["car_link"]
+                    car_image = car_id["car_image"]
                     massage_ = (
-                        f"{hbold('Модель: ')}{car_name}\n"
+                        # f"{hlink('', car_image)}"
+                        f"{hbold('Модель: ')}{car_name}\n"                        
                         f"{hcode('Вид двигателя: ')}{car_engine}\n"
                         f"{hcode('Привод: ')}{car_chassis}\n"
                         f"{hcode('Цена: ')}{car_price}\n"
                         f"{hcode('Дата: ')}{date}\n"
+                        f"{hide_link(str(car_image))}\n"
                         f"{hlink('Просмотреть', car_link)}"
                     )
                     await message.answer(massage_)
