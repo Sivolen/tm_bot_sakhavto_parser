@@ -1,7 +1,5 @@
 import json
 
-# import os
-
 import requests
 
 from bs4 import BeautifulSoup as Bs
@@ -26,8 +24,6 @@ def get_image_url(domain, car_id):
 
 
 def get_data(site_url: str, user_id: str, domain: str):
-
-    domain = domain
     proxies = {}
     if PROXY_URL != "":
         proxies = {
@@ -73,9 +69,6 @@ def get_data(site_url: str, user_id: str, domain: str):
 def check_cars_update(site_url: str, user_id: str, domain: str):
     with open(f"cache/cars_{user_id}.json") as file:
         cars_list = json.load(file)
-
-
-    domain = domain
 
     proxies = {}
     if PROXY_URL != "":
@@ -134,7 +127,9 @@ def check_cars_update(site_url: str, user_id: str, domain: str):
 
     return new_cars_dict
 
-check_cars_update(site_url="https://autokochka.ru/sales/auto?f%5Bcategory_id%5D=1&sort=newest&f%5Bbrand_id%5D=42&f%5Bto_order%5D=0",
-               user_id="364022", domain="https://autokochka.ru")
+
+# check_cars_update(
+#     site_url="https://autokochka.ru/sales/auto?f%5Bcategory_id%5D=1&sort=newest&f%5Bbrand_id%5D=42&f%5Bto_order%5D=0",
+#     user_id="364022", domain="https://autokochka.ru")
 
 # get_image_url(domain="https://autokochka.ru", car_id=1639327)
