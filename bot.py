@@ -20,7 +20,7 @@ from aiogram.types import (
     # ReplyKeyboardRemove,
 )
 
-from settings import TM_TOKEN, PROXY_URL, URL, TIMER, DOMAIN
+from settings import TM_TOKEN, PROXY_URL, TIMER, DOMAIN, USER_ID_REQUIRED, URLS
 
 from main import get_data, check_cars_update
 
@@ -74,7 +74,7 @@ logger.addHandler(file_header)
 
 user_id_required = USER_ID_REQUIRED
 # Change for use in groups (user_id == chat_id in pm)
-chat_id_required = user_id_required
+chat_id_required = USER_ID_REQUIRED
 
 
 class Parm(StatesGroup):
@@ -154,9 +154,6 @@ async def start(message: types.Message, state: FSMContext):
     await state.update_data(status={
         user_id: {"status": True}
     })
-
-    current_state = await state.get_state()
-    state_data = await state.get_data()
     while True:
         # Checking the process, if true then it works, if false then interrupt the loop
         state_data = await state.get_data()
@@ -170,6 +167,9 @@ async def start(message: types.Message, state: FSMContext):
             not os.path.exists(f"cache/cars_{message.from_user.id}.json")
             or os.stat(f"cache/cars_{message.from_user.id}.json").st_size == 0
         ):
+            URL = URLS.get(str(message.from_user.id))
+            if not URL:
+                return message.answer("URL not found")
             cars_data = get_data(site_url=URL, user_id=str(user_id), domain=DOMAIN)
             if cars_data is not {}:
                 for k, car_id in sorted(cars_data.items()):
@@ -189,6 +189,9 @@ async def start(message: types.Message, state: FSMContext):
                     )
                     await message.answer(massage_)
         else:
+            URL = URLS.get(str(message.from_user.id))
+            if not URL:
+                return message.answer("URL not found")
             cars_data = check_cars_update(site_url=URL, user_id=str(user_id), domain=DOMAIN)
             if cars_data is not {}:
                 logger.info(
@@ -252,10 +255,10 @@ async def stop(message: types.Message, state: FSMContext):
 #     dp.start_polling()
 
 async def main():
-    bot = Bot(token=TM_TOKEN, parse_mode="HTML", session=session)
+    # bot = Bot(token=TM_TOKEN, parse_mode="HTML", session=session)
+    bot = Bot(token=TM_TOKEN, session=session)
 
     await dp.start_polling(bot)
-
 
 # Point
 if __name__ == "__main__":
