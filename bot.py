@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher, types, Router, html, F
 from aiogram.utils.markdown import hbold, hcode, hlink
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import (
@@ -72,11 +72,7 @@ logger.addHandler(file_header)
 # ]
 # Allowed users
 
-user_id_required = {
-    364022,  # Gridnev
-    444851768,  # Fedorov
-    299491767,  # Kim A.E.
-}
+user_id_required = USER_ID_REQUIRED
 # Change for use in groups (user_id == chat_id in pm)
 chat_id_required = user_id_required
 
@@ -134,7 +130,7 @@ async def start_handler(message: Message):
 
 # Start parsing
 # @dp.message(Text(contains="Начать процесс"))
-@form_router.message(F.from_user.id.in_(user_id_required), Text(contains="Начать процесс"))
+@form_router.message(F.from_user.id.in_(user_id_required), F.text == "Начать процесс")
 async def start(message: types.Message, state: FSMContext):
     """
     Move to the menu above
@@ -161,14 +157,10 @@ async def start(message: types.Message, state: FSMContext):
 
     current_state = await state.get_state()
     state_data = await state.get_data()
-
-    print(current_state)
-    print(state_data)
     while True:
         # Checking the process, if true then it works, if false then interrupt the loop
         state_data = await state.get_data()
         if state_data["status"][user_id]["status"] is False:
-            print("test")
             logger.info(
                 f'User {message.from_user.full_name}, id: {message.from_user.id} process status: {message.from_user.id}'
             )
