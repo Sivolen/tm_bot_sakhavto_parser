@@ -2,23 +2,41 @@ import os
 
 import logging
 from logging.handlers import RotatingFileHandler
-
+import sys
+import asyncio
 from asyncio import sleep
 
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types, Router, html
 from aiogram.utils.markdown import hbold, hcode, hlink
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command, Text
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.types import Message
 
 from settings import TM_TOKEN, PROXY_URL, URL, TIMER, DOMAIN
+
 from main import get_data, check_cars_update
 
-bot = Bot(token=TM_TOKEN, parse_mode=types.ParseMode.HTML, proxy=PROXY_URL)
+# bot = Bot(token=TM_TOKEN, parse_mode="HTML")
 storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
+# dp = Dispatcher(bot, storage=storage)
 
+session = AiohttpSession(
+    proxy={
+        PROXY_URL,
+        # "protocol1://user:password@host1:port1",
+        # ("protocol2://host2:port2", auth),
+    }  # can be any iterable if not set
+)
+
+form_router = Router()
+bot = Bot(token=TM_TOKEN, parse_mode="HTML", session=session)
+
+dp = Dispatcher()
+
+dp.include_router(form_router)
 
 # Configure logging default
 logging.basicConfig(
@@ -64,7 +82,7 @@ class Parm(StatesGroup):
 
 
 # Starts process and went to general menu
-@dp.message_handler(user_id=user_id_required, commands="start")
+@dp.message(Command(commands=["start"]))
 async def start_handler(message: types.Message):
     """
     Create Buttons menu
@@ -83,7 +101,7 @@ async def start_handler(message: types.Message):
 
 
 # Start parsing
-@dp.message_handler(Text(equals="Начать процесс"), user_id=user_id_required)
+@dp.message(Text(contains="Начать процесс"))
 async def start(message: types.Message, state: FSMContext):
     """
     Move to the menu above
@@ -159,8 +177,8 @@ async def start(message: types.Message, state: FSMContext):
 
 
 # Stop parsing
-@dp.message_handler(state=Parm.status)
-@dp.message_handler(Text(equals="Остановить"), user_id=user_id_required)
+@form_router.message(Parm.status)
+@dp.message(Text(contains="Остановить"))
 async def stop(message: types.Message, state: FSMContext):
     """
     Move to the menu above
@@ -180,11 +198,17 @@ async def stop(message: types.Message, state: FSMContext):
 
 
 # Init bot
-def main():
-    # executor.start_polling(dp)
-    executor.start_polling(dp, skip_updates=True)
+# def main():
+#     # executor.start_polling(dp)
+#     # executor.start_polling(dp, skip_updates=True)
+#     dp.start_polling()
+
+async def main():
+    await dp.start_polling(bot)
 
 
 # Point
 if __name__ == "__main__":
-    main()
+    # main()
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
