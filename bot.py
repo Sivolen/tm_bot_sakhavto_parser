@@ -2,23 +2,45 @@ import os
 
 import logging
 from logging.handlers import RotatingFileHandler
-
+import sys
+import asyncio
 from asyncio import sleep
 
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types, Router, html, F
 from aiogram.utils.markdown import hbold, hcode, hlink
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command, Text
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.types import (
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+    # ReplyKeyboardRemove,
+)
 
 from settings import TM_TOKEN, PROXY_URL, URL, TIMER, DOMAIN
+
 from main import get_data, check_cars_update
 
-bot = Bot(token=TM_TOKEN, parse_mode=types.ParseMode.HTML, proxy=PROXY_URL)
+# bot = Bot(token=TM_TOKEN, parse_mode="HTML")
 storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
+# dp = Dispatcher(bot, storage=storage)
 
+session = AiohttpSession(
+    proxy={
+        PROXY_URL,
+        # "protocol1://user:password@host1:port1",
+        # ("protocol2://host2:port2", auth),
+    }  # can be any iterable if not set
+)
+
+form_router = Router()
+
+dp = Dispatcher()
+
+dp.include_router(form_router)
 
 # Configure logging default
 logging.basicConfig(
@@ -43,13 +65,18 @@ file_header.setFormatter(log_format)
 logger.addHandler(file_header)
 
 
+# user_id_required = [
+#     364022,  # Gridnev
+#     444851768,  # Fedorov
+#     299491767,  # Kim A.E.
+# ]
 # Allowed users
-user_id_required = [
+
+user_id_required = {
     364022,  # Gridnev
     444851768,  # Fedorov
     299491767,  # Kim A.E.
-]
-
+}
 # Change for use in groups (user_id == chat_id in pm)
 chat_id_required = user_id_required
 
@@ -64,8 +91,10 @@ class Parm(StatesGroup):
 
 
 # Starts process and went to general menu
-@dp.message_handler(user_id=user_id_required, commands="start")
-async def start_handler(message: types.Message):
+
+# @dp.message(F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
+@form_router.message(F.from_user.id.in_(user_id_required), Command(commands=["start"]))
+async def start_handler(message: Message, state: FSMContext):
     """
     Create Buttons menu
     :param message:
@@ -74,16 +103,38 @@ async def start_handler(message: types.Message):
     logger.info(
         f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
     )
-    start_buttons = ["Начать процесс"]
-    keyboard = types.ReplyKeyboardMarkup(
-        resize_keyboard=True, row_width=3, selective=True
+    await state.set_state(Parm.status)
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True, row_width=3, selective=True,
+        keyboard=[
+            [
+                KeyboardButton(text="Начать процесс"),
+            ]
+
+        ]
     )
-    keyboard.add(*start_buttons)
+
     await message.answer("Выберете метод", reply_markup=keyboard)
 
 
+# @dp.message(~F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
+@form_router.message(~F.from_user.id.in_(user_id_required), Command(commands=["start"]))
+async def start_handler(message: Message):
+    """
+    Create Buttons menu
+    :param message:
+    :return:
+    """
+    logger.info(
+        f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
+    )
+
+    await message.answer("Операция не позволена")
+
+
 # Start parsing
-@dp.message_handler(Text(equals="Начать процесс"), user_id=user_id_required)
+# @dp.message(Text(contains="Начать процесс"))
+@form_router.message(F.from_user.id.in_(user_id_required), Text(contains="Начать процесс"))
 async def start(message: types.Message, state: FSMContext):
     """
     Move to the menu above
@@ -94,28 +145,40 @@ async def start(message: types.Message, state: FSMContext):
     logger.info(
         f"User {message.from_user.full_name}, id: {message.from_user.id} starting process"
     )
-    start_buttons = ["Остановить"]
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(*start_buttons)
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        keyboard=[
+            [
+                KeyboardButton(text="Остановить"),
+            ]
+        ]
+    )
     await message.answer("Процесс начат", reply_markup=keyboard)
-    async with state.proxy() as data:
-        data[message.from_user.id] = True
+    user_id = message.from_user.id
+    await state.update_data(status={
+        user_id: {"status": True}
+    })
+
+    current_state = await state.get_state()
+    state_data = await state.get_data()
+
+    print(current_state)
+    print(state_data)
     while True:
-        # Timeout before next request
-        await sleep(TIMER)
         # Checking the process, if true then it works, if false then interrupt the loop
-        async with state.proxy() as data:
+        state_data = await state.get_data()
+        if state_data["status"][user_id]["status"] is False:
+            print("test")
             logger.info(
                 f'User {message.from_user.full_name}, id: {message.from_user.id} process status: {message.from_user.id}'
             )
-            if data[message.from_user.id] is False:
-                await state.finish()
-                break
+            await state.clear()
+            break
         if (
             not os.path.exists(f"cache/cars_{message.from_user.id}.json")
             or os.stat(f"cache/cars_{message.from_user.id}.json").st_size == 0
         ):
-            cars_data = get_data(site_url=URL, user_id=message.from_user.id, domain=DOMAIN)
+            cars_data = get_data(site_url=URL, user_id=str(user_id), domain=DOMAIN)
             if cars_data is not {}:
                 for k, car_id in sorted(cars_data.items()):
                     car_name = car_id["car_name"]
@@ -134,7 +197,7 @@ async def start(message: types.Message, state: FSMContext):
                     )
                     await message.answer(massage_)
         else:
-            cars_data = check_cars_update(site_url=URL, user_id=message.from_user.id, domain=DOMAIN)
+            cars_data = check_cars_update(site_url=URL, user_id=str(user_id), domain=DOMAIN)
             if cars_data is not {}:
                 logger.info(
                     f"User {message.from_user.full_name}, id: {message.from_user.id} process status: {cars_data}"
@@ -155,12 +218,14 @@ async def start(message: types.Message, state: FSMContext):
                         f"{hlink('Просмотреть', car_link)}"
                     )
                     await message.answer(massage_)
-        await Parm.status.set()
+
+        # Timeout before next request
+        await sleep(TIMER)
 
 
 # Stop parsing
-@dp.message_handler(state=Parm.status)
-@dp.message_handler(Text(equals="Остановить"), user_id=user_id_required)
+@form_router.message(Parm.status, F.from_user.id.in_(user_id_required), F.text.casefold() == "остановить")
+# @dp.message(Text(contains="Остановить"))
 async def stop(message: types.Message, state: FSMContext):
     """
     Move to the menu above
@@ -171,20 +236,37 @@ async def stop(message: types.Message, state: FSMContext):
     logger.info(
         f"User {message.from_user.full_name}, id: {message.from_user.id} stopping process"
     )
-    start_buttons = ["Начать процесс"]
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(*start_buttons)
-    async with state.proxy() as data:
-        data[message.from_user.id] = False
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True, row_width=3, selective=True,
+        keyboard=[
+            [
+                KeyboardButton(text="Начать процесс"),
+            ]
+
+        ]
+    )
+    user_id = message.from_user.id
+    await state.update_data(status={
+        user_id: {"status": False}
+    })
+
     await message.answer("Процесс остановлен", reply_markup=keyboard)
 
 
 # Init bot
-def main():
-    # executor.start_polling(dp)
-    executor.start_polling(dp, skip_updates=True)
+# def main():
+#     # executor.start_polling(dp)
+#     # executor.start_polling(dp, skip_updates=True)
+#     dp.start_polling()
+
+async def main():
+    bot = Bot(token=TM_TOKEN, parse_mode="HTML", session=session)
+
+    await dp.start_polling(bot)
 
 
 # Point
 if __name__ == "__main__":
-    main()
+    # main()
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
