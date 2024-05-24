@@ -13,6 +13,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.default import DefaultBotProperties
 from aiogram.types import (
     KeyboardButton,
     Message,
@@ -24,9 +25,8 @@ from settings import TM_TOKEN, PROXY_URL, TIMER, DOMAIN, USER_ID_REQUIRED, URLS
 
 from main import get_data, check_cars_update
 
-# bot = Bot(token=TM_TOKEN, parse_mode="HTML")
+# Init states machine
 storage = MemoryStorage()
-# dp = Dispatcher(bot, storage=storage)
 
 session = AiohttpSession(
     proxy={
@@ -36,10 +36,9 @@ session = AiohttpSession(
     }  # can be any iterable if not set
 )
 
+# Init Bot
 form_router = Router()
-
 dp = Dispatcher()
-
 dp.include_router(form_router)
 
 # Configure logging default
@@ -56,8 +55,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Configure log dimp to the file
-# Set logger format
+
 file_header = RotatingFileHandler("logs/bot.log", maxBytes=100000, backupCount=100)
 file_header.setLevel(logging.DEBUG)
 log_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -65,13 +63,7 @@ file_header.setFormatter(log_format)
 logger.addHandler(file_header)
 
 
-# user_id_required = [
-#     364022,  # Gridnev
-#     444851768,  # Fedorov
-#     299491767,  # Kim A.E.
-# ]
 # Allowed users
-
 user_id_required = USER_ID_REQUIRED
 # Change for use in groups (user_id == chat_id in pm)
 chat_id_required = USER_ID_REQUIRED
@@ -88,34 +80,68 @@ class Parm(StatesGroup):
 
 # Starts process and went to general menu
 
-# @dp.message(F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
-@form_router.message(F.from_user.id.in_(user_id_required), Command(commands=["start"]))
-async def start_handler(message: Message, state: FSMContext):
-    """
-    Create Buttons menu
-    :param message:
-    :return:
-    """
-    logger.info(
-        f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
-    )
-    await state.set_state(Parm.status)
+
+async def start_process(message: types.Message) -> None:
     keyboard = ReplyKeyboardMarkup(
-        resize_keyboard=True, row_width=3, selective=True,
+        resize_keyboard=True,
+        row_width=3,
+        selective=True,
         keyboard=[
             [
                 KeyboardButton(text="Начать процесс"),
             ]
-
-        ]
+        ],
     )
-
     await message.answer("Выберете метод", reply_markup=keyboard)
 
 
-# @dp.message(~F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
-@form_router.message(~F.from_user.id.in_(user_id_required), Command(commands=["start"]))
-async def start_handler(message: Message):
+async def start_parce(message: types.Message) -> None:
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        keyboard=[
+            [
+                KeyboardButton(text="Остановить"),
+            ]
+        ],
+    )
+    await message.answer("Процесс начат", reply_markup=keyboard)
+
+
+async def stop_process(message: types.Message) -> None:
+    keyboard = ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        row_width=3,
+        selective=True,
+        keyboard=[
+            [
+                KeyboardButton(text="Начать процесс"),
+            ]
+        ],
+    )
+    await message.answer("Процесс остановлен", reply_markup=keyboard)
+
+
+async def send_car_data(message: types.Message, car_id: dict) -> None:
+    car_name = car_id["car_name"]
+    car_engine = car_id["car_engine"]
+    car_chassis = car_id["car_chassis"]
+    car_price = car_id["car_price"]
+    date = car_id["date"]
+    car_link = car_id["car_link"]
+    massage_ = (
+        f"{hbold('Модель: ')}{car_name}\n"
+        f"{hcode('Вид двигателя: ')}{car_engine}\n"
+        f"{hcode('Привод: ')}{car_chassis}\n"
+        f"{hcode('Цена: ')}{car_price}\n"
+        f"{hcode('Дата: ')}{date}\n"
+        f"{hlink('Просмотреть', car_link)}"
+    )
+    await message.answer(massage_)
+
+
+# @dp.message(F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
+@form_router.message(F.from_user.id.in_(user_id_required), Command(commands=["start"]))
+async def start_handler(message: Message) -> None:
     """
     Create Buttons menu
     :param message:
@@ -125,13 +151,27 @@ async def start_handler(message: Message):
         f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
     )
 
+    await start_process(message)
+
+
+# @dp.message(~F.from_user.id.in_(user_id_required1), Command(commands=["start"]))
+@form_router.message(~F.from_user.id.in_(user_id_required), Command(commands=["start"]))
+async def start_handler(message: Message) -> None:
+    """
+    Create Buttons menu
+    :param message:
+    :return:
+    """
+    logger.info(
+        f"User {message.from_user.full_name}, id: {message.from_user.id} init process"
+    )
     await message.answer("Операция не позволена")
 
 
 # Start parsing
 # @dp.message(Text(contains="Начать процесс"))
 @form_router.message(F.from_user.id.in_(user_id_required), F.text == "Начать процесс")
-async def start(message: types.Message, state: FSMContext):
+async def start(message: types.Message, state: FSMContext) -> None:
     """
     Move to the menu above
     :param state:
@@ -141,87 +181,59 @@ async def start(message: types.Message, state: FSMContext):
     logger.info(
         f"User {message.from_user.full_name}, id: {message.from_user.id} starting process"
     )
-    keyboard = ReplyKeyboardMarkup(
-        resize_keyboard=True,
-        keyboard=[
-            [
-                KeyboardButton(text="Остановить"),
-            ]
-        ]
-    )
-    await message.answer("Процесс начат", reply_markup=keyboard)
-    user_id = message.from_user.id
-    await state.update_data(status={
-        user_id: {"status": True}
-    })
+    await state.set_state(Parm.status)
+
+    # init keyboad
+    await start_parce(message)
+
+    user_id: int = message.from_user.id
+    await state.update_data(status={user_id: {"status": True}})
     while True:
         # Checking the process, if true then it works, if false then interrupt the loop
-        state_data = await state.get_data()
+        state_data: dict = await state.get_data()
         if state_data["status"][user_id]["status"] is False:
             logger.info(
-                f'User {message.from_user.full_name}, id: {message.from_user.id} process status: {message.from_user.id}'
+                f"User {message.from_user.full_name}, id: {message.from_user.id} process status: {message.from_user.id}"
             )
-            await state.clear()
+            # await state.clear()
+            break
+        URL: str = URLS.get(str(message.from_user.id))
+        if not URL:
+            await message.answer("URL not found")
+            stop_process(message)
             break
         if (
             not os.path.exists(f"cache/cars_{message.from_user.id}.json")
             or os.stat(f"cache/cars_{message.from_user.id}.json").st_size == 0
         ):
-            URL = URLS.get(str(message.from_user.id))
-            if not URL:
-                return message.answer("URL not found")
-            cars_data = get_data(site_url=URL, user_id=str(user_id), domain=DOMAIN)
-            if cars_data is not {}:
-                for k, car_id in sorted(cars_data.items()):
-                    car_name = car_id["car_name"]
-                    car_engine = car_id["car_engine"]
-                    car_chassis = car_id["car_chassis"]
-                    car_price = car_id["car_price"]
-                    date = car_id["date"]
-                    car_link = car_id["car_link"]
-                    massage_ = (
-                        f"{hbold('Модель: ')}{car_name}\n"
-                        f"{hcode('Вид двигателя: ')}{car_engine}\n"
-                        f"{hcode('Привод: ')}{car_chassis}\n"
-                        f"{hcode('Цена: ')}{car_price}\n"
-                        f"{hcode('Дата: ')}{date}\n"
-                        f"{hlink('Просмотреть', car_link)}"
-                    )
-                    await message.answer(massage_)
+            cars_data: dict = get_data(
+                site_url=URL, user_id=str(user_id), domain=DOMAIN
+            )
+            # if cars_data is not {}:
+            #     for k, car_id in sorted(cars_data.items()):
+            #         await send_car_data(message, car_id)
         else:
-            URL = URLS.get(str(message.from_user.id))
-            if not URL:
-                return message.answer("URL not found")
-            cars_data = check_cars_update(site_url=URL, user_id=str(user_id), domain=DOMAIN)
-            if cars_data is not {}:
-                logger.info(
-                    f"User {message.from_user.full_name}, id: {message.from_user.id} process status: {cars_data}"
-                )
-                for k, car_id in sorted(cars_data.items()):
-                    car_name = car_id["car_name"]
-                    car_engine = car_id["car_engine"]
-                    car_chassis = car_id["car_chassis"]
-                    car_price = car_id["car_price"]
-                    date = car_id["date"]
-                    car_link = car_id["car_link"]
-                    massage_ = (
-                        f"{hbold('Модель: ')}{car_name}\n"
-                        f"{hcode('Вид двигателя: ')}{car_engine}\n"
-                        f"{hcode('Привод: ')}{car_chassis}\n"
-                        f"{hcode('Цена: ')}{car_price}\n"
-                        f"{hcode('Дата: ')}{date}\n"
-                        f"{hlink('Просмотреть', car_link)}"
-                    )
-                    await message.answer(massage_)
+            cars_data: dict = check_cars_update(
+                site_url=URL, user_id=str(user_id), domain=DOMAIN
+            )
+
+        if cars_data is not {}:
+            logger.info(
+                f"User {message.from_user.full_name}, id: {message.from_user.id} process status: send {cars_data}"
+            )
+            for k, car_id in sorted(cars_data.items()):
+                await send_car_data(message, car_id)
 
         # Timeout before next request
-        await sleep(TIMER)
+        await asyncio.sleep(TIMER)
 
 
 # Stop parsing
-@form_router.message(Parm.status, F.from_user.id.in_(user_id_required), F.text.casefold() == "остановить")
+@form_router.message(
+    Parm.status, F.from_user.id.in_(user_id_required), F.text == "Остановить"
+)
 # @dp.message(Text(contains="Остановить"))
-async def stop(message: types.Message, state: FSMContext):
+async def stop(message: types.Message, state: FSMContext) -> None:
     """
     Move to the menu above
     :param state:
@@ -231,34 +243,20 @@ async def stop(message: types.Message, state: FSMContext):
     logger.info(
         f"User {message.from_user.full_name}, id: {message.from_user.id} stopping process"
     )
-    keyboard = ReplyKeyboardMarkup(
-        resize_keyboard=True, row_width=3, selective=True,
-        keyboard=[
-            [
-                KeyboardButton(text="Начать процесс"),
-            ]
-
-        ]
-    )
     user_id = message.from_user.id
-    await state.update_data(status={
-        user_id: {"status": False}
-    })
+    await state.update_data(status={user_id: {"status": False}})
 
-    await message.answer("Процесс остановлен", reply_markup=keyboard)
+    await stop_process(message)
 
 
 # Init bot
-# def main():
-#     # executor.start_polling(dp)
-#     # executor.start_polling(dp, skip_updates=True)
-#     dp.start_polling()
-
-async def main():
+async def main() -> None:
     # bot = Bot(token=TM_TOKEN, parse_mode="HTML", session=session)
-    bot = Bot(token=TM_TOKEN, session=session)
-
+    bot = Bot(
+        token=TM_TOKEN, default=DefaultBotProperties(parse_mode="HTML"), session=session
+    )
     await dp.start_polling(bot)
+
 
 # Point
 if __name__ == "__main__":

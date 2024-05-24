@@ -1,4 +1,5 @@
-/settings.py
-/venv/
-/cache/
-/logs/
+settings.py
+venv/
+cache/
+logs/
+.idea/

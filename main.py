@@ -17,7 +17,10 @@ def get_image_url(domain, car_id):
     url = f"{domain}/sale/{car_id}/?f[category_id]=1&f[brand_id]=42&f[to_order]=0&sort=newest&index=0"
     response = requests.get(url, proxies=proxies)
     soup = Bs(response.text, "lxml")
-    car_images = soup.find("img", class_="photo-gallery__item photo-gallery__item-main js-photo-main").get("src")
+    car_images = soup.find(
+        "img", class_="photo-gallery__item photo-gallery__item-main js-photo-main"
+    )
+    car_images = car_images.get("src") if car_images else None
     # print(soup)
     # print(car_images)
     return car_images
