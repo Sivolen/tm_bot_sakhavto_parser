@@ -202,16 +202,11 @@ async def start(message: types.Message, state: FSMContext) -> None:
             await message.answer("URL not found")
             stop_process(message)
             break
-        if (
-            not os.path.exists(f"cache/cars_{message.from_user.id}.json")
-            or os.stat(f"cache/cars_{message.from_user.id}.json").st_size == 0
-        ):
+        cache_file: str = f"cache/cars_{message.from_user.id}.json"
+        if not os.path.exists(cache_file) or os.path.getsize(cache_file) == 0:
             cars_data: dict = get_data(
                 site_url=URL, user_id=str(user_id), domain=DOMAIN
             )
-            # if cars_data is not {}:
-            #     for k, car_id in sorted(cars_data.items()):
-            #         await send_car_data(message, car_id)
         else:
             cars_data: dict = check_cars_update(
                 site_url=URL, user_id=str(user_id), domain=DOMAIN
