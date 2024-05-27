@@ -1,29 +1,26 @@
-import os
-
-import logging
-from logging.handlers import RotatingFileHandler
-import sys
 import asyncio
-from asyncio import sleep
+import logging
+import os
+import sys
+from logging.handlers import RotatingFileHandler
 
-from aiogram import Bot, Dispatcher, types, Router, html, F
-from aiogram.utils.markdown import hbold, hcode, hlink
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.fsm.context import FSMContext
-from aiogram.filters import Command
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
     # ReplyKeyboardRemove,
 )
-
-from settings import TM_TOKEN, PROXY_URL, TIMER, DOMAIN, USER_ID_REQUIRED, URLS
+from aiogram.utils.markdown import hbold, hcode, hlink
 
 from main import get_data, check_cars_update
+from settings import TM_TOKEN, PROXY_URL, TIMER, DOMAIN, USER_ID_REQUIRED, URLS
 
 # Init states machine
 storage = MemoryStorage()
@@ -89,6 +86,7 @@ async def start_process(message: types.Message) -> None:
         keyboard=[
             [
                 KeyboardButton(text="Начать процесс"),
+                KeyboardButton(text="Add Url"),
             ]
         ],
     )
@@ -200,7 +198,7 @@ async def start(message: types.Message, state: FSMContext) -> None:
         URL: str = URLS.get(str(message.from_user.id))
         if not URL:
             await message.answer("URL not found")
-            stop_process(message)
+            await stop_process(message)
             break
         cache_file: str = f"cache/cars_{message.from_user.id}.json"
         if not os.path.exists(cache_file) or os.path.getsize(cache_file) == 0:
