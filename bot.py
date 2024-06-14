@@ -18,6 +18,7 @@ from aiogram.types import (
     # ReplyKeyboardRemove,
 )
 from aiogram.utils.markdown import hbold, hcode, hlink
+from aiogram.methods import DeleteWebhook
 
 from main import get_data, check_cars_update
 from settings import TM_TOKEN, PROXY_URL, TIMER, DOMAIN, USER_ID_REQUIRED, URLS
@@ -248,6 +249,7 @@ async def main() -> None:
     bot = Bot(
         token=TM_TOKEN, default=DefaultBotProperties(parse_mode="HTML"), session=session
     )
+    await bot(DeleteWebhook(drop_pending_updates=True))
     await dp.start_polling(bot)
 
 
