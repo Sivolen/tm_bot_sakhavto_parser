@@ -1,3 +1,4 @@
+from pathlib import Path
 import json
 
 import requests
@@ -44,8 +45,18 @@ def get_data(site_url: str, user_id: str, domain: str):
         car_id = car.find("a", class_="sale-link").get("href").split("/")[2]
         link = f'{domain}{car.find("a", class_="sale-link").get("href")}'
         name = car.find("a", class_="sale-link").text.strip()
-        car_engine = car.find("div", class_="sale-engine").text.strip()
-        car_chassis = car.find("div", class_="sale-chassis").text.strip()
+
+        car_data = car.find("div", class_="sale-main-data unit-data-item").text.strip().split(",")
+
+        car_engine_parts = [car_data[1] if len(car_data) > 1 else "", car_data[0] if len(car_data) > 0 else ""]
+        car_chassis_parts = [car_data[2] if len(car_data) > 2 else "", car_data[3] if len(car_data) > 3 else "",
+                             car_data[4] if len(car_data) > 4 else ""]
+
+        car_engine = ", ".join(filter(None, car_engine_parts))
+        car_chassis = ", ".join(filter(None, car_chassis_parts))
+
+        # car_engine = car.find("div", class_="sale-engine").text.strip()
+        # car_chassis = car.find("div", class_="sale-chassis").text.strip()
         # additional = car.find("div", class_="sale-additional").text.strip()
         car_price = car.find("div", class_="sale-price").text.strip()
         date = car.find("div", class_="sale-published-date").text.strip()
@@ -64,8 +75,11 @@ def get_data(site_url: str, user_id: str, domain: str):
             "date": date,
         }
 
-    with open(f"cache/cars_{user_id}.json", "w") as file:
-        json.dump(cars_dict, file, indent=4, ensure_ascii=False)
+    # with open(f"cache/cars_{user_id}.json", "w") as file:
+    #     json.dump(cars_dict, file, indent=4, ensure_ascii=False)
+
+    file_path = Path(f"cache/cars_{user_id}.json")
+    file_path.write_text(json.dumps(cars_dict, indent=4, ensure_ascii=False), encoding="utf-8")
     return cars_dict
 
 
@@ -93,10 +107,21 @@ def check_cars_update(site_url: str, user_id: str, domain: str):
         if car_id in cars_list and cars_list[car_id]["car_price"] == car_price:
             continue
         else:
+            print(car)
             link = f'{domain}{car.find("a", class_="sale-link").get("href")}'
             name = car.find("a", class_="sale-link").text.strip()
-            car_engine = car.find("div", class_="sale-engine").text.strip()
-            car_chassis = car.find("div", class_="sale-chassis").text.strip()
+            # car_engine = car.find("div", class_="sale-engine").text.strip()
+            car_data = car.find("div", class_="sale-main-data unit-data-item").text.strip().split(",")
+
+            car_engine_parts = [car_data[1] if len(car_data) > 1 else "", car_data[0] if len(car_data) > 0 else ""]
+            car_chassis_parts = [car_data[2] if len(car_data) > 2 else "", car_data[3] if len(car_data) > 3 else "",
+                                 car_data[4] if len(car_data) > 4 else ""]
+            car_engine = ", ".join(filter(None, car_engine_parts))
+            car_chassis = ", ".join(filter(None, car_chassis_parts))
+
+            # car_engine = f"{car_data[1], car_data[0]}"
+            # car_chassis = f"{car_data[2]}, {car_data[3]}, {car_data[4]}"
+
             # additional = car.find("div", class_="sale-additional").text.strip()
             car_price = car.find("div", class_="sale-price").text.strip()
             date = car.find("div", class_="sale-published-date").text.strip()
@@ -125,9 +150,10 @@ def check_cars_update(site_url: str, user_id: str, domain: str):
                 "car_image": car_image,
                 "date": date,
             }
-    with open(f"cache/cars_{user_id}.json", "w") as file:
-        json.dump(cars_list, file, indent=4, ensure_ascii=False)
-
+    # with open(f"cache/cars_{user_id}.json", "w") as file:
+    #     json.dump(cars_list, file, indent=4, ensure_ascii=False)
+    file_path = Path(f"cache/cars_{user_id}.json")
+    file_path.write_text(json.dumps(cars_list, indent=4, ensure_ascii=False), encoding="utf-8")
     return new_cars_dict
 
 
